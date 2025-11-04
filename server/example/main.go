@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/DucTran999/shared-pkg/server"
+	"github.com/ductran999/shared-pkg/server"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )

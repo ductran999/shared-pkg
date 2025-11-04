@@ -4,7 +4,7 @@
 
 ## Installation
 ```bash
-go get github.com/DucTran999/shared-pkg
+go get github.com/ductran999/shared-pkg
 ```
 
 ## Supported Cryptographic Methods

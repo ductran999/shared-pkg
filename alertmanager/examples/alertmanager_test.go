@@ -3,7 +3,7 @@ package alertmanager_test
 import (
 	"testing"
 
-	"github.com/DucTran999/shared-pkg/alertmanager"
+	"github.com/ductran999/shared-pkg/alertmanager"
 	"github.com/stretchr/testify/require"
 )
 

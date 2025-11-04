@@ -3,7 +3,7 @@ package retry
 import (
 	"time"
 
-	"github.com/DucTran999/shared-pkg/retry/backoff"
+	"github.com/ductran999/shared-pkg/retry/backoff"
 	"github.com/rs/zerolog/log"
 )
 

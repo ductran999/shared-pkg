@@ -3,7 +3,7 @@ package caesar_test
 import (
 	"testing"
 
-	"github.com/DucTran999/shared-pkg/scrypto/caesar"
+	"github.com/ductran999/shared-pkg/scrypto/caesar"
 	"github.com/stretchr/testify/assert"
 )
 

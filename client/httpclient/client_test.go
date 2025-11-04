@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DucTran999/shared-pkg/client/httpclient"
+	"github.com/ductran999/shared-pkg/client/httpclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

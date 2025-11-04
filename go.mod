@@ -1,4 +1,4 @@
-module github.com/DucTran999/shared-pkg
+module github.com/ductran999/shared-pkg
 
 go 1.23.1
 

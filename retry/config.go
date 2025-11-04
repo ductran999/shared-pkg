@@ -1,6 +1,6 @@
 package retry
 
-import "github.com/DucTran999/shared-pkg/retry/backoff"
+import "github.com/ductran999/shared-pkg/retry/backoff"
 
 // Config defines the configuration settings for retry behavior.
 type Config struct {
