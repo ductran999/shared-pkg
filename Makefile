@@ -25,3 +25,10 @@ deps: ## Install dependencies
 .PHONY: lint
 lint: ## Run linters
 	golangci-lint run --timeout 10m --config .golangci.yml
+
+.PHONY: vet
+vet: ## Run go vet
+	go vet ./...
+
+.PHONY: check
+check: tidy vet lint ## Run tidy, vet and lint (stop on first failure)
