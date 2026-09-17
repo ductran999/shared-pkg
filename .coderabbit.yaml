@@ -1,5 +1,0 @@
-tools:
-  golangci-lint:
-    enabled: true
-    version: "2.1.6"
-    config: ".golangci.yml"
