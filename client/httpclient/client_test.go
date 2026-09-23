@@ -46,7 +46,7 @@ func Test_HttpClientGet(t *testing.T) {
 		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "/test", r.URL.Path)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"message":"success"}`))
+			_, _ = w.Write([]byte(`{"message":"success"}`))
 		}))
 		defer mockServer.Close()
 
