@@ -1,10 +1,13 @@
 package environ_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ductran999/shared-pkg/environ"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Get(t *testing.T) {
@@ -53,4 +56,21 @@ func Test_GetInt(t *testing.T) {
 			assert.Equal(t, tc.want, environ.GetInt(tc.key, tc.fallback))
 		})
 	}
+}
+
+func Test_LoadEnv(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module demo\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".env"), []byte("APP_LOADENV_TEST=from-dotenv\n"), 0o600))
+
+	old, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		_ = os.Chdir(old)
+		_ = os.Unsetenv("APP_LOADENV_TEST")
+	})
+
+	require.NoError(t, environ.LoadEnv())
+	assert.Equal(t, "from-dotenv", os.Getenv("APP_LOADENV_TEST"))
 }
