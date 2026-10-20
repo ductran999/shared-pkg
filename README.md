@@ -20,6 +20,7 @@ small API surface, no surprises.
 | `environ` | Read env vars with fallbacks (`Get`, `GetInt`) and load `.env` from the project root (`LoadEnv`). |
 | `fspath` | Locate directories by searching upwards (`FindDirOfFile`, `FindRootDir`). |
 | `pretty/display` | Pretty-print payloads for debugging (`PrintJSON`, `SprintJSON`). |
+| `transport/ginresp` | Gin helpers that write envelopes (`OK`, `Created`, `List`, `Error`, ...) + `RequestID` middleware emitting UUIDv4 `X-Request-ID`. |
 | `cache` | Redis and in-memory cache. |
 | `server` | Gin HTTP server with sane timeouts. |
 | `client/httpclient` | Legacy v1 HTTP client (frozen, use `transport/httpclient/v2` for new code). |
@@ -61,3 +62,17 @@ make tidy    # go mod tidy
 make vet     # go vet ./...
 make lint    # golangci-lint
 ```
+
+## Example
+
+`example/` is a demo server that wires every shared package together
+(`environ`, `fspath`, `pretty/display`, `server`, `transport/httpclient/v2`,
+`transport/response`, `transport/ginresp`).
+
+```bash
+go run ./example            # listens on :9090 (override with APP_PORT)
+curl http://localhost:9090/todos
+```
+
+It exposes `GET/POST /todos`, `GET /todos/:id`, `GET /upstream` (calls a mock
+service through `httpclient v2`) and `GET /debug` (pretty-prints the store).

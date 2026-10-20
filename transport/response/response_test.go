@@ -9,56 +9,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Constructors(t *testing.T) {
+func Test_Success(t *testing.T) {
 	tests := []struct {
 		name string
-		got  response.Envelope
+		got  any
 		want string
 	}{
 		{
 			name: "OK",
 			got:  response.OK([]string{"a"}),
-			want: `{"code":200,"message":"OK","data":["a"]}`,
-		},
-		{
-			name: "OK with meta",
-			got:  response.OK(map[string]int{"id": 1}, map[string]any{"total": 10}),
-			want: `{"code":200,"message":"OK","data":{"id":1},"meta":{"total":10}}`,
+			want: `{"data":["a"],"request_id":""}`,
 		},
 		{
 			name: "Created",
 			got:  response.Created(map[string]int{"id": 7}),
-			want: `{"code":201,"message":"Created","data":{"id":7}}`,
+			want: `{"data":{"id":7},"request_id":""}`,
 		},
 		{
-			name: "BadRequest default",
-			got:  response.BadRequest(),
-			want: `{"code":400,"message":"Bad Request"}`,
+			name: "List",
+			got:  response.List([]string{"a"}, response.NewPagination(2, 10, 95)),
+			want: `{"data":["a"],"meta":{"page":2,"size":10,"total":95},"request_id":""}`,
 		},
 		{
-			name: "BadRequest custom",
-			got:  response.BadRequest("invalid id"),
-			want: `{"code":400,"message":"invalid id"}`,
-		},
-		{
-			name: "Unauthorized",
-			got:  response.Unauthorized(),
-			want: `{"code":401,"message":"Unauthorized"}`,
-		},
-		{
-			name: "Forbidden",
-			got:  response.Forbidden(),
-			want: `{"code":403,"message":"Forbidden"}`,
-		},
-		{
-			name: "NotFound",
-			got:  response.NotFound(),
-			want: `{"code":404,"message":"Not Found"}`,
-		},
-		{
-			name: "InternalError",
-			got:  response.InternalError("db down"),
-			want: `{"code":500,"message":"db down"}`,
+			name: "with request id",
+			got:  response.OK("x").WithRequestID("req-123"),
+			want: `{"data":"x","request_id":"req-123"}`,
 		},
 	}
 
@@ -71,17 +46,67 @@ func Test_Constructors(t *testing.T) {
 	}
 }
 
-func Test_MergeMeta(t *testing.T) {
-	t.Run("none is omitted", func(t *testing.T) {
-		b, _ := json.Marshal(response.OK("x"))
-		assert.NotContains(t, string(b), "meta")
-	})
+func Test_Error(t *testing.T) {
+	tests := []struct {
+		name string
+		got  response.Error
+		want string
+	}{
+		{
+			name: "BadRequest default",
+			got:  response.BadRequest(),
+			want: `{"code":"BAD_REQUEST","message":"Bad Request","request_id":""}`,
+		},
+		{
+			name: "BadRequest custom message",
+			got:  response.BadRequest("invalid id"),
+			want: `{"code":"BAD_REQUEST","message":"invalid id","request_id":""}`,
+		},
+		{
+			name: "NewError custom code",
+			got:  response.NewError("OBJECT_ALREADY_EXISTED", "object already existed"),
+			want: `{"code":"OBJECT_ALREADY_EXISTED","message":"object already existed","request_id":""}`,
+		},
+		{
+			name: "NewError with field errors",
+			got: response.NewError(response.CodeInvalidParam, "validation failed",
+				response.FieldError{Field: "email", Message: "invalid"},
+				response.FieldError{Field: "age", Message: "must be positive"},
+			),
+			want: `{"code":"INVALID_PARAM","message":"validation failed","errors":[{"field":"email","message":"invalid"},{"field":"age","message":"must be positive"}],"request_id":""}`,
+		},
+		{
+			name: "Unauthorized",
+			got:  response.Unauthorized(),
+			want: `{"code":"UNAUTHORIZED","message":"Unauthorized","request_id":""}`,
+		},
+		{
+			name: "Forbidden",
+			got:  response.Forbidden(),
+			want: `{"code":"FORBIDDEN","message":"Forbidden","request_id":""}`,
+		},
+		{
+			name: "NotFound",
+			got:  response.NotFound(),
+			want: `{"code":"NOT_FOUND","message":"Not Found","request_id":""}`,
+		},
+		{
+			name: "InternalError",
+			got:  response.InternalError("db down"),
+			want: `{"code":"INTERNAL_ERROR","message":"db down","request_id":""}`,
+		},
+		{
+			name: "with request id",
+			got:  response.BadRequest().WithRequestID("req-123"),
+			want: `{"code":"BAD_REQUEST","message":"Bad Request","request_id":"req-123"}`,
+		},
+	}
 
-	t.Run("several maps merged", func(t *testing.T) {
-		env := response.OK("x", map[string]any{"a": 1}, map[string]any{"b": 2})
-		m, ok := env.Meta.(map[string]any)
-		require.True(t, ok)
-		assert.Equal(t, 1, m["a"])
-		assert.Equal(t, 2, m["b"])
-	})
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := json.Marshal(tc.got)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(b))
+		})
+	}
 }
