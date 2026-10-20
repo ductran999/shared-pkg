@@ -16,6 +16,7 @@ small API surface, no surprises.
 | Package | Description |
 |---|---|
 | `transport/httpclient/v2` | HTTP client with sensible defaults, functional options, base URL, request-ID propagation and sentinel errors. Returns raw `*http.Response`. |
+| `transport/response` | Standard API envelope with constructors (`OK`, `Created`, `BadRequest`, ...). |
 | `environ` | Read env vars with fallbacks (`Get`, `GetInt`) and load `.env` from the project root (`LoadEnv`). |
 | `fspath` | Locate directories by searching upwards (`FindDirOfFile`, `FindRootDir`). |
 | `pretty/display` | Pretty-print payloads for debugging (`PrintJSON`, `SprintJSON`). |
