@@ -49,9 +49,18 @@ func List[T any](c *gin.Context, items []T, p response.Pagination) {
 	c.JSON(http.StatusOK, response.List(items, p).WithRequestID(requestID(c)))
 }
 
-// BadRequest writes a 400 envelope.
+// BadRequest writes a 400 envelope with code BAD_REQUEST.
 func BadRequest(c *gin.Context, msg ...string) {
 	c.JSON(http.StatusBadRequest, response.BadRequest(msg...).WithRequestID(requestID(c)))
+}
+
+// BadRequestCode writes a 400 envelope with a custom code (e.g. INVALID_PARAM).
+func BadRequestCode(c *gin.Context, code response.Code, msg ...string) {
+	message := "Bad Request"
+	if len(msg) > 0 && msg[0] != "" {
+		message = msg[0]
+	}
+	c.JSON(http.StatusBadRequest, response.NewError(code, message).WithRequestID(requestID(c)))
 }
 
 // Unauthorized writes a 401 envelope.

@@ -24,6 +24,9 @@ func setupRouter() *gin.Engine {
 		ginresp.List(c, []string{"a"}, response.Pagination{Page: 2, Size: 10, Total: 95})
 	})
 	r.GET("/bad", func(c *gin.Context) { ginresp.BadRequest(c, "invalid id") })
+	r.GET("/invalid-param", func(c *gin.Context) {
+		ginresp.BadRequestCode(c, response.CodeInvalidParam, "invalid id")
+	})
 	r.GET("/custom", func(c *gin.Context) {
 		ginresp.Error(c, http.StatusBadRequest, "OBJECT_ALREADY_EXISTED", "object already existed")
 	})
@@ -68,6 +71,13 @@ func Test_GinResp(t *testing.T) {
 			path:        "/bad",
 			status:      http.StatusBadRequest,
 			wantCode:    "BAD_REQUEST",
+			wantMessage: "invalid id",
+		},
+		{
+			name:        "invalid param",
+			path:        "/invalid-param",
+			status:      http.StatusBadRequest,
+			wantCode:    "INVALID_PARAM",
 			wantMessage: "invalid id",
 		},
 		{
