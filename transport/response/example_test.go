@@ -32,7 +32,7 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.GET("/custom", func(c *gin.Context) {
-		c.JSON(http.StatusBadRequest, response.NewError("OBJECT_ALREADY_EXISTED", "object already existed"))
+		c.JSON(http.StatusBadRequest, response.NewError("OBJECT_ALREADY_EXISTED", "object already existed", nil))
 	})
 
 	return r
@@ -74,14 +74,14 @@ func Test_GinHandlers(t *testing.T) {
 			method: http.MethodGet,
 			path:   "/bad",
 			status: http.StatusBadRequest,
-			want:   `{"code":"BAD_REQUEST","message":"invalid id","request_id":""}`,
+			want:   `{"error":{"code":"BAD_REQUEST","message":"invalid id"},"request_id":""}`,
 		},
 		{
 			name:   "custom code",
 			method: http.MethodGet,
 			path:   "/custom",
 			status: http.StatusBadRequest,
-			want:   `{"code":"OBJECT_ALREADY_EXISTED","message":"object already existed","request_id":""}`,
+			want:   `{"error":{"code":"OBJECT_ALREADY_EXISTED","message":"object already existed"},"request_id":""}`,
 		},
 	}
 

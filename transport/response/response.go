@@ -4,31 +4,35 @@
 // Example:
 //
 //	return response.OK(todos)
-//	return response.List(items, response.Pagination{Page: page, Size: size, Total: total})
+//	return response.List(items, response.NewPagination(page, size, total))
 //	return response.BadRequest("invalid id")
-//	return response.NewError("OBJECT_ALREADY_EXISTED", "object already existed")
+//	return response.NewError("OBJECT_ALREADY_EXISTED", "object already existed", nil)
 package response
 
-// Code is a custom business code. Define more in your service as needed.
-type Code string
+import "github.com/ductran999/shared-pkg/errs"
+
+// Code is a custom business code. It is an alias of errs.Code, so the domain
+// layer and the transport layer share one vocabulary and one set of constants.
+type Code = errs.Code
 
 // Common business codes.
 const (
-	CodeBadRequest    Code = "BAD_REQUEST"
-	CodeUnauthorized  Code = "UNAUTHORIZED"
-	CodeForbidden     Code = "FORBIDDEN"
-	CodeNotFound      Code = "NOT_FOUND"
-	CodeInternalError Code = "INTERNAL_ERROR"
-	CodeInvalidParam  Code = "INVALID_PARAM"
+	CodeBadRequest    = errs.CodeBadRequest
+	CodeUnauthorized  = errs.CodeUnauthorized
+	CodeForbidden     = errs.CodeForbidden
+	CodeNotFound      = errs.CodeNotFound
+	CodeInternalError = errs.CodeInternalError
+	CodeInvalidParam  = errs.CodeInvalidParam
 )
 
 // FieldError describes a single validation error.
-type FieldError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
+// It is an alias of errs.FieldError so the domain layer can build
+// validation details without importing the transport package.
+type FieldError = errs.FieldError
 
 // Success is the success envelope.
+//
+//	{"data":{...},"meta":{...},"request_id":"..."}
 type Success[T any] struct {
 	Data      T      `json:"data"`
 	Meta      any    `json:"meta,omitempty"`
@@ -41,12 +45,19 @@ func (s Success[T]) WithRequestID(requestID string) Success[T] {
 	return s
 }
 
+// ErrorDetail carries the error information.
+type ErrorDetail struct {
+	Code    Code         `json:"code"`
+	Message string       `json:"message"`
+	Details []FieldError `json:"details,omitempty"`
+}
+
 // Error is the error envelope.
+//
+//	{"error":{"code":"...","message":"...","details":{...}},"request_id":"..."}
 type Error struct {
-	Code      Code         `json:"code"`
-	Message   string       `json:"message"`
-	Errors    []FieldError `json:"errors,omitempty"`
-	RequestID string       `json:"request_id"`
+	Error     ErrorDetail `json:"error"`
+	RequestID string      `json:"request_id"`
 }
 
 // WithRequestID returns a copy of the error envelope carrying the request ID.
@@ -70,34 +81,34 @@ func List[T any](items []T, p Pagination) Success[[]T] {
 	return Success[[]T]{Data: items, Meta: p}
 }
 
-// NewError builds an error envelope with a custom code and message.
-func NewError(code Code, message string, errs ...FieldError) Error {
-	return Error{Code: code, Message: message, Errors: errs}
+// NewError builds an error envelope with a custom code, message and optional details.
+func NewError(code Code, message string, details []FieldError) Error {
+	return Error{Error: ErrorDetail{Code: code, Message: message, Details: details}}
 }
 
 // BadRequest returns a BAD_REQUEST envelope. The message defaults to "Bad Request".
 func BadRequest(msg ...string) Error {
-	return Error{Code: CodeBadRequest, Message: firstOrMessage(msg, "Bad Request")}
+	return NewError(CodeBadRequest, firstOrMessage(msg, "Bad Request"), nil)
 }
 
 // Unauthorized returns an UNAUTHORIZED envelope. The message defaults to "Unauthorized".
 func Unauthorized(msg ...string) Error {
-	return Error{Code: CodeUnauthorized, Message: firstOrMessage(msg, "Unauthorized")}
+	return NewError(CodeUnauthorized, firstOrMessage(msg, "Unauthorized"), nil)
 }
 
 // Forbidden returns a FORBIDDEN envelope. The message defaults to "Forbidden".
 func Forbidden(msg ...string) Error {
-	return Error{Code: CodeForbidden, Message: firstOrMessage(msg, "Forbidden")}
+	return NewError(CodeForbidden, firstOrMessage(msg, "Forbidden"), nil)
 }
 
 // NotFound returns a NOT_FOUND envelope. The message defaults to "Not Found".
 func NotFound(msg ...string) Error {
-	return Error{Code: CodeNotFound, Message: firstOrMessage(msg, "Not Found")}
+	return NewError(CodeNotFound, firstOrMessage(msg, "Not Found"), nil)
 }
 
 // InternalError returns an INTERNAL_ERROR envelope. The message defaults to "Internal Server Error".
 func InternalError(msg ...string) Error {
-	return Error{Code: CodeInternalError, Message: firstOrMessage(msg, "Internal Server Error")}
+	return NewError(CodeInternalError, firstOrMessage(msg, "Internal Server Error"), nil)
 }
 
 // firstOrMessage returns the first non-empty message, or fallback.

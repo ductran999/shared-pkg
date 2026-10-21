@@ -55,50 +55,52 @@ func Test_Error(t *testing.T) {
 		{
 			name: "BadRequest default",
 			got:  response.BadRequest(),
-			want: `{"code":"BAD_REQUEST","message":"Bad Request","request_id":""}`,
+			want: `{"error":{"code":"BAD_REQUEST","message":"Bad Request"},"request_id":""}`,
 		},
 		{
 			name: "BadRequest custom message",
 			got:  response.BadRequest("invalid id"),
-			want: `{"code":"BAD_REQUEST","message":"invalid id","request_id":""}`,
+			want: `{"error":{"code":"BAD_REQUEST","message":"invalid id"},"request_id":""}`,
 		},
 		{
 			name: "NewError custom code",
-			got:  response.NewError("OBJECT_ALREADY_EXISTED", "object already existed"),
-			want: `{"code":"OBJECT_ALREADY_EXISTED","message":"object already existed","request_id":""}`,
+			got:  response.NewError("OBJECT_ALREADY_EXISTED", "object already existed", nil),
+			want: `{"error":{"code":"OBJECT_ALREADY_EXISTED","message":"object already existed"},"request_id":""}`,
 		},
 		{
-			name: "NewError with field errors",
+			name: "NewError with details",
 			got: response.NewError(response.CodeInvalidParam, "validation failed",
-				response.FieldError{Field: "email", Message: "invalid"},
-				response.FieldError{Field: "age", Message: "must be positive"},
+				[]response.FieldError{
+					{Field: "email", Message: "invalid"},
+					{Field: "age", Message: "must be positive"},
+				},
 			),
-			want: `{"code":"INVALID_PARAM","message":"validation failed","errors":[{"field":"email","message":"invalid"},{"field":"age","message":"must be positive"}],"request_id":""}`,
+			want: `{"error":{"code":"INVALID_PARAM","message":"validation failed","details":[{"field":"email","message":"invalid"},{"field":"age","message":"must be positive"}]},"request_id":""}`,
 		},
 		{
 			name: "Unauthorized",
 			got:  response.Unauthorized(),
-			want: `{"code":"UNAUTHORIZED","message":"Unauthorized","request_id":""}`,
+			want: `{"error":{"code":"UNAUTHORIZED","message":"Unauthorized"},"request_id":""}`,
 		},
 		{
 			name: "Forbidden",
 			got:  response.Forbidden(),
-			want: `{"code":"FORBIDDEN","message":"Forbidden","request_id":""}`,
+			want: `{"error":{"code":"FORBIDDEN","message":"Forbidden"},"request_id":""}`,
 		},
 		{
 			name: "NotFound",
 			got:  response.NotFound(),
-			want: `{"code":"NOT_FOUND","message":"Not Found","request_id":""}`,
+			want: `{"error":{"code":"NOT_FOUND","message":"Not Found"},"request_id":""}`,
 		},
 		{
 			name: "InternalError",
 			got:  response.InternalError("db down"),
-			want: `{"code":"INTERNAL_ERROR","message":"db down","request_id":""}`,
+			want: `{"error":{"code":"INTERNAL_ERROR","message":"db down"},"request_id":""}`,
 		},
 		{
 			name: "with request id",
 			got:  response.BadRequest().WithRequestID("req-123"),
-			want: `{"code":"BAD_REQUEST","message":"Bad Request","request_id":"req-123"}`,
+			want: `{"error":{"code":"BAD_REQUEST","message":"Bad Request"},"request_id":"req-123"}`,
 		},
 	}
 
