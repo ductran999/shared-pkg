@@ -21,65 +21,67 @@ import (
 	"time"
 
 	"github.com/ductran999/shared-pkg/environ"
+	"github.com/ductran999/shared-pkg/errs"
 	"github.com/ductran999/shared-pkg/fspath"
 	"github.com/ductran999/shared-pkg/pretty/display"
 	"github.com/ductran999/shared-pkg/server"
 	"github.com/ductran999/shared-pkg/transport/ginresp"
 	httpclient "github.com/ductran999/shared-pkg/transport/httpclient/v2"
+	"github.com/ductran999/shared-pkg/transport/middlewares"
 	"github.com/ductran999/shared-pkg/transport/response"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
 
-// Todo is the demo resource.
-type Todo struct {
-	ID    int    `json:"id"`
-	Title string `json:"title"`
-	Done  bool   `json:"done"`
-}
-
-var store = []Todo{
-	{ID: 1, Title: "write demo", Done: false},
-	{ID: 2, Title: "commit", Done: true},
-}
-
 // upstreamClient is shared by /upstream handler to call the mock service.
 var upstreamClient *httpclient.Client
+
+// todos is the use case layer, wired in main.
+var todos *todoService
 
 func newRouter() *gin.Engine {
 	gin.SetMode(gin.DebugMode)
 	r := gin.New()
-	r.Use(ginresp.RequestID())
+	r.Use(middlewares.RequestID())
+	r.Use(middlewares.Logger())
+	r.Use(middlewares.Recovery())
 
 	r.GET("/todos", func(c *gin.Context) {
-		p := response.NewPagination(1, 10, len(store))
-		ginresp.List(c, store, p)
+		items := todos.List(c.Request.Context())
+		p := response.NewPagination(1, 10, len(items))
+		ginresp.List(c, items, p)
 	})
 
 	r.GET("/todos/:id", func(c *gin.Context) {
+		// Parsing an HTTP path param belongs to the adapter layer.
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
-			ginresp.BadRequest(c, "invalid todo id")
+			ginresp.WriteError(c, errs.Validation("INVALID_TODO_ID", "invalid todo id"))
 			return
 		}
-		for _, t := range store {
-			if t.ID == id {
-				ginresp.OK(c, t)
-				return
-			}
+
+		// The use case returns a classified error, the adapter only maps it.
+		todo, err := todos.Get(c.Request.Context(), id)
+		if err != nil {
+			ginresp.WriteError(c, err)
+			return
 		}
-		ginresp.NotFound(c, "todo not found")
+		ginresp.OK(c, todo)
 	})
 
 	r.POST("/todos", func(c *gin.Context) {
 		var t Todo
 		if err := json.NewDecoder(c.Request.Body).Decode(&t); err != nil {
-			ginresp.BadRequest(c, "invalid body")
+			ginresp.WriteError(c, errs.Validation("INVALID_BODY", "invalid body"))
 			return
 		}
-		t.ID = len(store) + 1
-		store = append(store, t)
-		ginresp.Created(c, t)
+
+		todo, err := todos.Create(c.Request.Context(), t)
+		if err != nil {
+			ginresp.WriteError(c, err)
+			return
+		}
+		ginresp.Created(c, todo)
 	})
 
 	r.GET("/upstream", func(c *gin.Context) {
@@ -102,12 +104,18 @@ func newRouter() *gin.Engine {
 	})
 
 	r.GET("/debug", func(c *gin.Context) {
-		// Pretty-print the current store to stdout for local debugging.
-		if err := display.PrintJSON(store); err != nil {
+		// Pretty-print the current todos to stdout for local debugging.
+		if err := display.PrintJSON(todos.List(c.Request.Context())); err != nil {
 			ginresp.InternalError(c, "debug failed")
 			return
 		}
 		ginresp.OK(c, gin.H{"debug": "printed to stdout"})
+	})
+
+	r.GET("/panic", func(_ *gin.Context) {
+		// The recovery middleware turns the panic into a standard error
+		// envelope, so the client never gets a broken response.
+		panic("panic demo")
 	})
 
 	return r
@@ -124,6 +132,12 @@ func main() {
 		log.Fatal().Err(err).Msg("find project root")
 	}
 	log.Info().Str("root", root).Int("port", port).Msg("demo starting")
+
+	// Wire the layers: the use case only knows the repository port.
+	todos = newTodoService(&inMemoryTodoRepository{todos: []Todo{
+		{ID: 1, Title: "write demo", Done: false},
+		{ID: 2, Title: "commit", Done: true},
+	}})
 
 	// Mock upstream service that /upstream calls via httpclient v2.
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

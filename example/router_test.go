@@ -15,6 +15,11 @@ import (
 
 func newTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
+	todos = newTodoService(&inMemoryTodoRepository{todos: []Todo{
+		{ID: 1, Title: "write demo", Done: false},
+		{ID: 2, Title: "commit", Done: true},
+	}})
+
 	return newRouter()
 }
 
@@ -23,6 +28,16 @@ func unwrap(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	return body
+}
+
+// unwrapError returns the nested error object of the payload.
+func unwrapError(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	body := unwrap(t, w)
+	detail, ok := body["error"].(map[string]any)
+	require.True(t, ok, "payload must contain a nested error object")
+
+	return detail
 }
 
 func Test_Router_Todos(t *testing.T) {
@@ -55,9 +70,9 @@ func Test_Router_Todos(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/todos/999", nil)
 		r.ServeHTTP(w, req)
 		require.Equal(t, http.StatusNotFound, w.Code)
-		body := unwrap(t, w)
-		assert.Equal(t, "NOT_FOUND", body["code"])
-		assert.Equal(t, "todo not found", body["message"])
+		detail := unwrapError(t, w)
+		assert.Equal(t, "TODO_NOT_FOUND", detail["code"])
+		assert.Equal(t, "todo not found", detail["message"])
 	})
 
 	t.Run("bad id", func(t *testing.T) {
@@ -65,8 +80,8 @@ func Test_Router_Todos(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/todos/abc", nil)
 		r.ServeHTTP(w, req)
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		body := unwrap(t, w)
-		assert.Equal(t, "BAD_REQUEST", body["code"])
+		detail := unwrapError(t, w)
+		assert.Equal(t, "INVALID_TODO_ID", detail["code"])
 	})
 
 	t.Run("create", func(t *testing.T) {
@@ -86,8 +101,21 @@ func Test_Router_Todos(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		r.ServeHTTP(w, req)
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		got := unwrap(t, w)
-		assert.Equal(t, "BAD_REQUEST", got["code"])
+		detail := unwrapError(t, w)
+		assert.Equal(t, "INVALID_BODY", detail["code"])
+	})
+
+	t.Run("create missing title", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		body, _ := json.Marshal(map[string]string{})
+		req := httptest.NewRequest(http.MethodPost, "/todos", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		detail := unwrapError(t, w)
+		assert.Equal(t, "TITLE_REQUIRED", detail["code"])
+		detailsJSON, _ := json.Marshal(detail["details"])
+		assert.JSONEq(t, `[{"field":"title","message":"is required"}]`, string(detailsJSON))
 	})
 }
 
@@ -111,4 +139,18 @@ func Test_Router_Upstream(t *testing.T) {
 	body := unwrap(t, w)
 	assert.Equal(t, "hi", body["data"].(map[string]any)["message"])
 	assert.NotEmpty(t, body["request_id"])
+}
+
+func Test_Router_Panic(t *testing.T) {
+	r := newTestRouter()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	r.ServeHTTP(w, req)
+
+	// The recovery middleware turns the panic into the standard envelope.
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+	detail := unwrapError(t, w)
+	assert.Equal(t, "INTERNAL_ERROR", detail["code"])
+	assert.Equal(t, "internal server error", detail["message"])
 }
