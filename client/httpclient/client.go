@@ -1,3 +1,9 @@
+// Package httpclient is the legacy v1 HTTP client.
+//
+// Deprecated: use github.com/ductran999/shared-pkg/transport/httpclient/v2
+// instead. It returns the raw *http.Response, has functional options and
+// propagates the request ID across services. This package is kept frozen for
+// backward compatibility and will be removed in a future major version.
 package httpclient
 
 import (
