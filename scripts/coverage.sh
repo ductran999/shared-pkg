@@ -18,8 +18,8 @@ echo "--------------------------------------------------------------------------
 COV_PATH=test/coverage
 
 mkdir -p $COV_PATH
-# Find all packages excluding `/app`
-PKGS=$(go list ./scrypto/... ./client/...)
+# Run the tests of every package of the library.
+PKGS=$(go list ./...)
 
 # Run tests with coverage
 if ! go test -cover $PKGS -coverprofile="$COV_PATH/coverage.out"; then
@@ -32,10 +32,14 @@ if [ ! -f "test/coverage/coverage.out" ]; then
   exit 1
 fi
 
-go tool cover -html=$COV_PATH/coverage.out -o $COV_PATH/coverage.html
+# The example programs are demos, not shipped library code. Their tests still
+# run, but they are excluded from the coverage gate.
+grep -v "example" "$COV_PATH/coverage.out" > "$COV_PATH/coverage.lib.out"
+
+go tool cover -html=$COV_PATH/coverage.lib.out -o $COV_PATH/coverage.html
 echo "----------------------------------------------------------------------------------"
 
-total_coverage=$(go tool cover -func=test/coverage/coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+total_coverage=$(go tool cover -func=$COV_PATH/coverage.lib.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
 coverage_threshold=80.0
 
 comparison=$(awk "BEGIN {print ($total_coverage >= $coverage_threshold) ? 1 : 0}")
